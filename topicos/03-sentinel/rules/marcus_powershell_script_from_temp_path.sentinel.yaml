@@ -1,0 +1,91 @@
+# Regra 4 — endpoint. Deriva do CASE-01 do Ciclo 2 (achados 4, 5 e 7): o script descarregado
+# foi escrito em %LOCALAPPDATA%\Temp, executado com `-File`, e a persistência "Updater"
+# aponta para o mesmo caminho. Esta regra vê a EXECUÇÃO — a linha de DeviceProcessEvents.
+#
+# ESTADO: escrita e raciocinada; NÃO validada por DetectionTemplateStructureValidationTests;
+#         NÃO executada contra motor Kusto; NÃO existe workspace nem tenant MDE.
+#         Dia 5 (22/09/2026): fixtures em tools/fixtures-deviceprocessevents.json.
+# ORIGEM: ../../01-defender-endpoint/CASE-01-ENDPOINT-INVESTIGATION.md · DAY-01 (dataset)
+# CONFIRMADO EM TEMPLATE REAL (Solutions/Microsoft Defender XDR/Analytic Rules/
+#   PotentialBuildProcessCompromiseMDE.yaml v1.1.0, 22/09/2026):
+#   connectorId MicrosoftThreatProtection · dataTypes DeviceProcessEvents · kind Scheduled ·
+#   status Available.
+# ASIM: a doc recomenda `imProcessCreate` em vez da tabela nativa. NÃO usado aqui, declarado:
+#   (1) o avaliador local não modela um parser; (2) uma regra ASIM lista quatro conectores
+#   (BackupDeletion.yaml) e o mapeamento de colunas seria afirmado sem prova. Fica para o
+#   CASE-04 como limitação, não como omissão.
+# ESCOPO DECLARADO: só `-File`. `-Command "& <path>"`, `-EncodedCommand` e `IEX` NÃO são
+#   vistos por esta regra — são outras regras (o `-enc` é o Ciclo 2, Dia 1).
+
+id: c5e8a3f1-9d27-4b6c-8e04-1f7a2d9c6b53
+name: PowerShell Executing Script File From User-Writable Temp Path
+description: |
+  Detects PowerShell (powershell.exe or pwsh.exe) launched with -File pointing to a script
+  under a user-writable temporary or download location (AppData\Local\Temp, Windows\Temp,
+  Downloads). Scripts in these paths are typically dropped by a download step rather than
+  deployed by administration; the CASE-01 chain (download -> write to Temp -> execute with
+  -File -> persistence pointing to the same path) passes through this event. Legitimate
+  installers that run from Program Files are excluded. Scope is deliberately narrow: -Command,
+  -EncodedCommand and IEX invocations are not covered and belong to separate detections.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - DeviceProcessEvents
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+status: Available
+tactics:
+  - Execution
+relevantTechniques:
+  - T1059.001
+query: |
+  DeviceProcessEvents
+  | where FileName =~ "powershell.exe" or FileName =~ "pwsh.exe"
+  | where ProcessCommandLine has "-File"
+  | where ProcessCommandLine has_any (@"\AppData\Local\Temp\", @"\Windows\Temp\", @"\Downloads\")
+  | where not(InitiatingProcessFolderPath startswith @"C:\Program Files\"
+           or InitiatingProcessFolderPath startswith @"C:\Program Files (x86)\")
+  | project TimeGenerated, DeviceName, AccountDomain, AccountName, FileName, ProcessCommandLine,
+            InitiatingProcessFileName, InitiatingProcessCommandLine, ProcessId,
+            ProcessCreationTime, SHA256
+# Dia 6 — moldura de incidente. AllEntities inclui Process (ProcessId+CreationTimeUtc),
+# que é único por execução: a persistência a correr de novo (fixture 7) abre incidente NOVO,
+# não junta ao primeiro. Decisão consciente: cada execução é evidência própria.
+incidentConfiguration:
+  createIncident: true
+  groupingConfiguration:
+    enabled: true
+    reopenClosedIncident: false
+    lookbackDuration: PT5H
+    matchingMethod: AllEntities
+eventGroupingSettings:
+  aggregationKind: AlertPerResult
+customDetails:
+  ScriptCommandLine: ProcessCommandLine
+  Parent: InitiatingProcessFileName
+  ParentCommandLine: InitiatingProcessCommandLine
+  ScriptHash: SHA256
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName             # DeviceName é FQDN (doc); HostName+DnsDomain exigiria split()
+        columnName: DeviceName
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: AccountName
+      - identifier: NTDomain
+        columnName: AccountDomain
+  - entityType: Process
+    fieldMappings:
+      - identifier: ProcessId
+        columnName: ProcessId
+      - identifier: CommandLine
+        columnName: ProcessCommandLine
+      - identifier: CreationTimeUtc
+        columnName: ProcessCreationTime
+version: 1.0.0
+kind: Scheduled

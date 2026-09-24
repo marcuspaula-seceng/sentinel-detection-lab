@@ -1,0 +1,92 @@
+# Tradução da regra Sigma do Ciclo 3 para o formato de template da comunidade
+# Azure/Azure-Sentinel (Detections). Campos conforme a wiki
+# "Contribute to the Community of Queries", lida em 22/09/2026.
+#
+# ESTADO: escrita e raciocinada; NÃO validada por DetectionTemplateStructureValidationTests;
+#         NÃO executada contra motor Kusto; NÃO existe workspace.
+#         Dia 2 (22/09/2026): 10/10 fixtures PASS (4 TP / 6 TN) no avaliador local
+#         tools/kql_eval.py — subconjunto de KQL, não motor Kusto.
+# ORIGEM: ../../02-windows-evtx/sigma/marcus_schtasks_system_persistence.yml
+# connectorId, status e kind confirmados em 22/09/2026 contra dois templates reais do
+# repositório Azure/Azure-Sentinel (Solutions/Windows Security Events/Analytic Rules:
+# ScheduleTaskHide.yaml v1.0.1 e PotentialFodhelperUACBypass.yaml v1.0.2).
+
+id: 3c9d7f2a-6b41-4e8f-9a05-2d7c1e4b8f63
+name: Scheduled Task Created To Run As SYSTEM With High-Frequency Trigger
+description: |
+  Detects creation of a scheduled task via schtasks.exe that runs as the SYSTEM account with
+  a high-frequency or boot/logon trigger (minute, onstart, onlogon). Each element alone is
+  legitimate; the combination of maximum privilege and persistent re-execution rarely appears
+  in routine administration and frequently appears in remote execution and persistence.
+  Translated from the author's Sigma rule, itself written from observation of the public
+  sample "ID4688-4698 Persistent scheduled task with SYSTEM privileges creation.evtx"
+  (mdecrevoisier/EVTX-to-MITRE-Attack, CC0).
+severity: Medium
+requiredDataConnectors:
+  - connectorId: SecurityEvents        # agente legado (MMA) — ambos aparecem nos templates reais
+    dataTypes:
+      - SecurityEvent
+  - connectorId: WindowsSecurityEvents # agente AMA
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+status: Available
+tactics:
+  - Persistence
+  - PrivilegeEscalation
+relevantTechniques:
+  - T1053.005
+query: |
+  SecurityEvent
+  | where EventID == 4688
+  | where NewProcessName endswith @"\schtasks.exe"
+  | where CommandLine contains " /create " and CommandLine contains " /ru "
+  | where CommandLine contains " /ru SYSTEM"
+      or CommandLine contains @" /ru ""SYSTEM"""
+      or CommandLine contains @" /ru NT AUTHORITY\SYSTEM"
+      or CommandLine contains @" /ru ""NT AUTHORITY\SYSTEM"""
+  | where CommandLine contains " /sc minute"
+      or CommandLine contains " /sc onstart"
+      or CommandLine contains " /sc onlogon"
+  | where not(ParentProcessName startswith @"C:\Program Files\"
+           or ParentProcessName startswith @"C:\Program Files (x86)\")
+  | project TimeGenerated, Computer, SubjectDomainName, SubjectUserName,
+            NewProcessName, NewProcessId, ParentProcessName, CommandLine, EventID
+# Dia 6 — moldura de incidente (campos e ordem como nos templates reais, ex. CTERA/MassDeletions.yaml)
+incidentConfiguration:
+  createIncident: true
+  groupingConfiguration:
+    enabled: true
+    reopenClosedIncident: false
+    lookbackDuration: PT5H              # janela por defeito da doc (5 min a 7 dias)
+    matchingMethod: AllEntities         # Host + Account + Process iguais -> mesmo incidente
+eventGroupingSettings:
+  aggregationKind: AlertPerResult       # cada tarefa criada é um facto próprio (tecto: 150 por execução)
+customDetails:
+  TaskCommandLine: CommandLine
+  ParentProcess: ParentProcessName
+  CreatedBy: SubjectUserName
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName             # identificador FRACO sozinho (doc oficial)
+        columnName: Computer
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name                 # Name+NTDomain = FORTE para conta de domínio
+        columnName: SubjectUserName      # se for SYSTEM / conta built-in, a entidade é descartada
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+  - entityType: Process
+    fieldMappings:
+      - identifier: ProcessId            # sem Host ligado: identificador FRACO (doc oficial)
+        columnName: NewProcessId
+      - identifier: CommandLine
+        columnName: CommandLine
+      - identifier: CreationTimeUtc      # aproximação: hora do evento 4688
+        columnName: TimeGenerated
+version: 1.0.0
+kind: Scheduled

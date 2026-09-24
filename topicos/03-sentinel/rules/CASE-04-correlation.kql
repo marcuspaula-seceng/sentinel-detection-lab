@@ -1,0 +1,45 @@
+// CASE-04 — correlação identidade -> endpoint -> servidor, por conta e janela.
+// Ciclo 5 · Dia 7 (22/09/2026).
+//
+// ESTADO: testada localmente em 22/09/2026 (Dia 7.1) — tools/run_case.py, 4/4 casos em
+//         tools/fixtures-case04.json: A correlaciona (1 linha); B (universos originais dos
+//         CASE-01/02/03) 0 linhas; C (fora da janela) 0; D (homónimo de outro domínio) 1 —
+//         falso positivo POR DESENHO do join por Name. O avaliador ganhou `let`, `join
+//         kind=inner on <col>`, `between`, `project` com alias e `extend ... split(...)`,
+//         só nas formas que esta query usa. NÃO é motor Kusto; NÃO executada em workspace.
+// HIPÓTESE EMBUTIDA (decide tudo): AccountName (DeviceProcessEvents) == prefixo do UPN
+//         (SigninLogs) == SubjectUserName (SecurityEvent). É convenção de identidade da
+//         organização, não propriedade do Sentinel. Onde não valer, esta query não junta nada.
+// PADRÃO: Ciclo 4 · DAY-06 · bloco 9 (`let` + `join kind=inner` + `between`).
+// FILTROS: são os das regras 3, 4 e 2, copiados; qualquer alteração lá deve ser reflectida aqui.
+
+let Janela = 2h;
+let SignIns =
+    SigninLogs
+    | where ResultType == "0" and IsInteractive == true
+    | where ConditionalAccessStatus != "failure"
+    | extend IsCompliant = tostring(DeviceDetail.isCompliant), IsManaged = tostring(DeviceDetail.isManaged)
+    | where IsCompliant != "true" and IsManaged != "true"
+    | where Location !in ("IE", "PT")
+    | extend Name = tostring(split(UserPrincipalName, "@", 0)[0])
+    | project SignInTime = TimeGenerated, Name, UserPrincipalName, IPAddress, Location;
+let ScriptRuns =
+    DeviceProcessEvents
+    | where FileName =~ "powershell.exe" or FileName =~ "pwsh.exe"
+    | where ProcessCommandLine has "-File"
+    | where ProcessCommandLine has_any (@"\AppData\Local\Temp\", @"\Windows\Temp\", @"\Downloads\")
+    | project RunTime = TimeGenerated, Name = AccountName, DeviceName, ProcessCommandLine, ProcessId, ProcessCreationTime;
+let TaskRegs =
+    SecurityEvent
+    | where EventID == 4698
+    | parse EventData with * 'TaskName">' TaskName "<" *
+    | parse EventData with * 'TaskContent">' TaskContent "</Data>" *
+    | where TaskContent contains "&lt;UserId&gt;S-1-5-18&lt;/UserId&gt;"
+    | project TaskTime = TimeGenerated, Name = SubjectUserName, Computer, TaskName;
+SignIns
+| join kind=inner ScriptRuns on Name
+| where RunTime between (SignInTime .. SignInTime + Janela)
+| join kind=inner TaskRegs on Name
+| where TaskTime between (RunTime .. RunTime + Janela)
+| project SignInTime, RunTime, TaskTime, Name, UserPrincipalName, IPAddress, Location,
+          DeviceName, ProcessCommandLine, Computer, TaskName

@@ -1,0 +1,88 @@
+# Regra 3 — identidade. Deriva do CASE-03 do Ciclo 4 (achados 3 e 4): a sessão que
+# satisfez MFA vinha de outro país e de um dispositivo NÃO conforme, e a política de
+# dispositivo conforme ficou `notApplied`. Esta regra vê essa LINHA, sem agregação.
+#
+# ESTADO: escrita e raciocinada; NÃO validada por DetectionTemplateStructureValidationTests;
+#         NÃO executada contra motor Kusto; NÃO existe workspace nem tenant.
+#         Dia 4 (22/09/2026): fixtures em tools/fixtures-signinlogs.json.
+# ORIGEM: ../../04-entra-iam/CASE-03-IDENTITY-INVESTIGATION.md · DAY-02 (dataset) · DAY-06 (KQL)
+# CONFIRMADO EM TEMPLATES REAIS (Solutions/Microsoft Entra ID/Analytic Rules, 22/09/2026):
+#   connectorId AzureActiveDirectory · dataTypes SigninLogs · ResultType comparado como
+#   STRING ("0") · DeviceDetail lido com tostring(DeviceDetail.<campo>) · entidade Account
+#   por FullName/Name/UPNSuffix · kind Scheduled · status Available
+#   (MFASpammingfollowedbySuccessfullogin.yaml v1.0.4, FailedLogonToAzurePortal.yaml).
+# DELTA AO CICLO 4: as queries do DAY-06 usam `ResultType != 0` (int). Na tabela SigninLogs
+#   a coluna é string; os templates da Microsoft usam "0". Corrigido aqui, não lá.
+# A LISTA DE PAÍSES É DO LABORATÓRIO. IE/PT vêm do CASE-03; numa organização real é uma
+#   watchlist, não uma constante na regra.
+
+id: b4f1d7a9-2c6e-4d58-a3b0-7e91c5f2d8a4
+name: Interactive Sign-in From Non-Compliant Device Outside Allowed Countries (CA not enforced)
+description: |
+  Detects a successful interactive sign-in (ResultType "0") from a device that is neither
+  compliant nor managed, originating from a country outside the organisation's allowed list,
+  where Conditional Access did not block (status is success or notApplied). Each element is
+  legitimate on its own; together they describe the CASE-03 session in which the right
+  policy existed but was not enforced. Row-level by design: the aggregate pattern
+  (failures followed by success) is left to correlation. Country list is a lab constant
+  and should be a watchlist in production. Missing DeviceDetail is treated as
+  non-compliant, which is a declared false-positive risk.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - SigninLogs
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+status: Available
+tactics:
+  - InitialAccess
+  - DefenseEvasion
+relevantTechniques:
+  - T1078.004
+  - T1556.006
+query: |
+  SigninLogs
+  | where ResultType == "0"
+  | where IsInteractive == true
+  | where ConditionalAccessStatus != "failure"
+  | extend IsCompliant = tostring(DeviceDetail.isCompliant)
+  | extend IsManaged = tostring(DeviceDetail.isManaged)
+  | where IsCompliant != "true" and IsManaged != "true"
+  | where Location !in ("IE", "PT")
+  | project TimeGenerated, UserPrincipalName, AppDisplayName, IPAddress, Location,
+            ConditionalAccessStatus, IsCompliant, IsManaged
+# Dia 6 — moldura de incidente. A mesma sessão gera uma linha POR APP (fixtures 3 e 4);
+# agrupar só por Account evita um incidente por aplicação. `Selected` + `groupByEntities`
+# seguem o schema ARM de scheduledAlertRules.groupingConfiguration; NÃO vistos em template
+# real hoje (só AllEntities) — declarado.
+incidentConfiguration:
+  createIncident: true
+  groupingConfiguration:
+    enabled: true
+    reopenClosedIncident: false
+    lookbackDuration: PT5H
+    matchingMethod: Selected
+    groupByEntities:
+      - Account
+eventGroupingSettings:
+  aggregationKind: AlertPerResult
+customDetails:
+  Country: Location
+  CAStatus: ConditionalAccessStatus
+  DeviceCompliant: IsCompliant
+  DeviceManaged: IsManaged
+  App: AppDisplayName
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName             # como os templates da MS; Name+UPNSuffix exigiria split()
+        columnName: UserPrincipalName
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address              # FORTE só para IP global (doc oficial)
+        columnName: IPAddress
+version: 1.0.0
+kind: Scheduled

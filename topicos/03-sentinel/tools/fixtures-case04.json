@@ -1,0 +1,66 @@
+[
+  {
+    "_case": "A — cenario coerente do CASE-04 §3: j.silva atravessa as 3 familias em 31 min. ESPERADO: 1 linha correlacionada.",
+    "_expected_rows": 1,
+    "_expected_names": ["j.silva"],
+    "tables": {
+      "SigninLogs": [
+        { "TimeGenerated": "2026-09-22T08:00:05Z", "UserPrincipalName": "j.silva@example.com", "IPAddress": "198.51.100.7", "Location": "RO", "IsInteractive": true, "ResultType": "0", "ConditionalAccessStatus": "success", "DeviceDetail": { "isCompliant": false, "isManaged": false } }
+      ],
+      "DeviceProcessEvents": [
+        { "TimeGenerated": "2026-09-22T08:14:20Z", "AccountName": "j.silva", "DeviceName": "pc-003.example.com", "FileName": "powershell.exe", "ProcessCommandLine": "powershell.exe -File C:\\Users\\j.silva\\AppData\\Local\\Temp\\a.ps1", "ProcessId": 4330, "ProcessCreationTime": "2026-09-22T08:14:20Z" }
+      ],
+      "SecurityEvent": [
+        { "TimeGenerated": "2026-09-22T08:31:03Z", "EventID": 4698, "Computer": "srv-01.example.com", "SubjectUserName": "j.silva", "EventData": "<EventData><Data Name=\"SubjectUserName\">j.silva</Data><Data Name=\"TaskName\">\\Updater</Data><Data Name=\"TaskContent\">&lt;Task&gt;&lt;Principals&gt;&lt;Principal&gt;&lt;UserId&gt;S-1-5-18&lt;/UserId&gt;&lt;/Principal&gt;&lt;/Principals&gt;&lt;/Task&gt;</Data></EventData>" }
+      ]
+    }
+  },
+  {
+    "_case": "B — os tres universos ORIGINAIS (CASE-01 u3 / CASE-02 admmig / CASE-03 j.silva). ESPERADO: 0 linhas — e o achado central do CASE-04 §2, agora em codigo.",
+    "_expected_rows": 0,
+    "_expected_names": [],
+    "tables": {
+      "SigninLogs": [
+        { "TimeGenerated": "2026-09-22T08:00:05Z", "UserPrincipalName": "j.silva@example.com", "IPAddress": "198.51.100.7", "Location": "RO", "IsInteractive": true, "ResultType": "0", "ConditionalAccessStatus": "success", "DeviceDetail": { "isCompliant": false, "isManaged": false } }
+      ],
+      "DeviceProcessEvents": [
+        { "TimeGenerated": "2026-09-22T08:14:20Z", "AccountName": "u3", "DeviceName": "pc-003.example.com", "FileName": "powershell.exe", "ProcessCommandLine": "powershell.exe -File C:\\Users\\u3\\AppData\\Local\\Temp\\a.ps1", "ProcessId": 4330, "ProcessCreationTime": "2026-09-22T08:14:20Z" }
+      ],
+      "SecurityEvent": [
+        { "TimeGenerated": "2026-09-22T08:31:03Z", "EventID": 4698, "Computer": "srvdefender01.offsec.lan", "SubjectUserName": "admmig", "EventData": "<EventData><Data Name=\"SubjectUserName\">admmig</Data><Data Name=\"TaskName\">\\eviltask</Data><Data Name=\"TaskContent\">&lt;Task&gt;&lt;Principals&gt;&lt;Principal&gt;&lt;UserId&gt;S-1-5-18&lt;/UserId&gt;&lt;/Principal&gt;&lt;/Principals&gt;&lt;/Task&gt;</Data></EventData>" }
+      ]
+    }
+  },
+  {
+    "_case": "C — mesma conta nas 3 familias, mas a tarefa e registada 3h depois do script (janela = 2h). ESPERADO: 0 linhas — a janela tambem decide.",
+    "_expected_rows": 0,
+    "_expected_names": [],
+    "tables": {
+      "SigninLogs": [
+        { "TimeGenerated": "2026-09-22T08:00:05Z", "UserPrincipalName": "j.silva@example.com", "IPAddress": "198.51.100.7", "Location": "RO", "IsInteractive": true, "ResultType": "0", "ConditionalAccessStatus": "success", "DeviceDetail": { "isCompliant": false, "isManaged": false } }
+      ],
+      "DeviceProcessEvents": [
+        { "TimeGenerated": "2026-09-22T08:14:20Z", "AccountName": "j.silva", "DeviceName": "pc-003.example.com", "FileName": "powershell.exe", "ProcessCommandLine": "powershell.exe -File C:\\Users\\j.silva\\AppData\\Local\\Temp\\a.ps1", "ProcessId": 4330, "ProcessCreationTime": "2026-09-22T08:14:20Z" }
+      ],
+      "SecurityEvent": [
+        { "TimeGenerated": "2026-09-22T11:31:03Z", "EventID": 4698, "Computer": "srv-01.example.com", "SubjectUserName": "j.silva", "EventData": "<EventData><Data Name=\"SubjectUserName\">j.silva</Data><Data Name=\"TaskName\">\\Updater</Data><Data Name=\"TaskContent\">&lt;Task&gt;&lt;Principals&gt;&lt;Principal&gt;&lt;UserId&gt;S-1-5-18&lt;/UserId&gt;&lt;/Principal&gt;&lt;/Principals&gt;&lt;/Task&gt;</Data></EventData>" }
+      ]
+    }
+  },
+  {
+    "_case": "D — HOMONIMO: j.silva@example.com na identidade, mas o script corre com j.silva de OUTRO dominio (CONTOSO) e a tarefa e registada por esse. O join por Name sozinho JUNTA. ESPERADO: 1 linha — e um FALSO POSITIVO por desenho (CASE-04 §3, Via A/B).",
+    "_expected_rows": 1,
+    "_expected_names": ["j.silva"],
+    "tables": {
+      "SigninLogs": [
+        { "TimeGenerated": "2026-09-22T08:00:05Z", "UserPrincipalName": "j.silva@example.com", "IPAddress": "198.51.100.7", "Location": "RO", "IsInteractive": true, "ResultType": "0", "ConditionalAccessStatus": "success", "DeviceDetail": { "isCompliant": false, "isManaged": false } }
+      ],
+      "DeviceProcessEvents": [
+        { "TimeGenerated": "2026-09-22T08:14:20Z", "AccountName": "j.silva", "AccountDomain": "CONTOSO", "DeviceName": "wks-77.contoso.local", "FileName": "powershell.exe", "ProcessCommandLine": "powershell.exe -File C:\\Users\\j.silva\\Downloads\\x.ps1", "ProcessId": 900, "ProcessCreationTime": "2026-09-22T08:14:20Z" }
+      ],
+      "SecurityEvent": [
+        { "TimeGenerated": "2026-09-22T08:31:03Z", "EventID": 4698, "Computer": "srv-77.contoso.local", "SubjectUserName": "j.silva", "EventData": "<EventData><Data Name=\"SubjectUserName\">j.silva</Data><Data Name=\"TaskName\">\\Updater</Data><Data Name=\"TaskContent\">&lt;Task&gt;&lt;Principals&gt;&lt;Principal&gt;&lt;UserId&gt;S-1-5-18&lt;/UserId&gt;&lt;/Principal&gt;&lt;/Principals&gt;&lt;/Task&gt;</Data></EventData>" }
+      ]
+    }
+  }
+]

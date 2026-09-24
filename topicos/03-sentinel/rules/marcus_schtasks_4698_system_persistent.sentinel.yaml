@@ -1,0 +1,89 @@
+# Tradução da regra 2 do Ciclo 3.1 (Event 4698) para o formato de template da comunidade
+# Azure/Azure-Sentinel (Detections).
+#
+# ESTADO: escrita e raciocinada; NÃO validada por DetectionTemplateStructureValidationTests;
+#         NÃO executada contra motor Kusto; NÃO existe workspace.
+#         Dia 3 (22/09/2026): fixtures em tools/fixtures-securityevent-4698.json.
+# ORIGEM: Ciclo 3.1, ../../02-windows-evtx/DAY-07-EVENT-4698-AND-VALIDATION.md
+# PADRÃO DE PARSE: o mesmo que a Microsoft usa em
+#   Solutions/Endpoint Threat Protection Essentials/Hunting Queries/
+#   ScheduledTaskCreationUpdateFromUserWritableDrectory.yaml v1.0.3
+#   (`parse EventData with * 'TaskName">' TaskName "<" *`) — porque a tabela SecurityEvent
+#   NÃO tem colunas TaskName/TaskContent; só existem dentro de EventData, com o XML da
+#   tarefa HTML-escapado (&lt; &gt;).
+# DEPENDÊNCIA DE AUDITORIA: sem "Audit Other Object Access Events" não há 4698 e a regra
+#   é surda, não limpa.
+
+id: 7e2b9c41-5a8d-4f36-b1e7-9c04d3a6f258
+name: Scheduled Task Registered For SYSTEM With Persistent Trigger (Event 4698)
+description: |
+  Detects the audited registration of a scheduled task (Event 4698) whose principal is the
+  well-known SYSTEM SID (S-1-5-18) and whose trigger repeats at high frequency (PT1M-PT5M)
+  or fires at boot/logon. Unlike the process-creation rule (4688 + schtasks.exe), this sees
+  the RESULT regardless of how the task was created - schtasks.exe, PowerShell
+  Register-ScheduledTask, or the COM API. The SID is language-independent, unlike
+  "NT AUTHORITY\SYSTEM". BootTrigger and LogonTrigger are the documented Task Scheduler
+  schema equivalents of /sc onstart and /sc onlogon; they were not observed in the sample.
+  Requires "Audit Other Object Access Events" to be enabled; without it no 4698 is written.
+  Translated from the author's Sigma rule, written from the public sample
+  "ID4688-4698 Persistent scheduled task with SYSTEM privileges creation.evtx"
+  (mdecrevoisier/EVTX-to-MITRE-Attack, CC0).
+severity: Medium
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+  - connectorId: WindowsSecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+status: Available
+tactics:
+  - Persistence
+  - PrivilegeEscalation
+relevantTechniques:
+  - T1053.005
+query: |
+  SecurityEvent
+  | where EventID == 4698
+  | parse EventData with * 'TaskName">' TaskName "<" *
+  | parse EventData with * 'TaskContent">' TaskContent "</Data>" *
+  | where TaskContent contains "&lt;UserId&gt;S-1-5-18&lt;/UserId&gt;"
+  | where TaskContent contains "&lt;Interval&gt;PT1M&lt;/Interval&gt;"
+      or TaskContent contains "&lt;Interval&gt;PT2M&lt;/Interval&gt;"
+      or TaskContent contains "&lt;Interval&gt;PT3M&lt;/Interval&gt;"
+      or TaskContent contains "&lt;Interval&gt;PT4M&lt;/Interval&gt;"
+      or TaskContent contains "&lt;Interval&gt;PT5M&lt;/Interval&gt;"
+      or TaskContent contains "&lt;BootTrigger&gt;"
+      or TaskContent contains "&lt;LogonTrigger&gt;"
+  | where not(TaskName startswith @"\Microsoft\")
+  | project TimeGenerated, Computer, SubjectDomainName, SubjectUserName, TaskName, EventID
+# Dia 6 — moldura de incidente
+incidentConfiguration:
+  createIncident: true
+  groupingConfiguration:
+    enabled: true
+    reopenClosedIncident: false
+    lookbackDuration: PT5H
+    matchingMethod: AllEntities         # Host + Account iguais -> mesmo incidente que a regra 1, se as entidades baterem
+eventGroupingSettings:
+  aggregationKind: AlertPerResult
+customDetails:
+  TaskName: TaskName                    # a coluna que não existe na tabela, agora visível no alerta
+  RegisteredBy: SubjectUserName
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName             # FRACO sozinho (doc oficial)
+        columnName: Computer
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name                 # quem REGISTOU a tarefa, não o principal SYSTEM
+        columnName: SubjectUserName
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+version: 1.0.0
+kind: Scheduled

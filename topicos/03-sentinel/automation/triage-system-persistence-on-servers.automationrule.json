@@ -1,0 +1,95 @@
+{
+  "_comment": [
+    "Ciclo 5 · Dia 6 (22/09/2026). Regra de automação MODELADA, não implantada.",
+    "Schema: Microsoft.SecurityInsights/automationRules@2025-10-01-preview, lido em",
+    "https://learn.microsoft.com/en-us/azure/templates/microsoft.securityinsights/automationrules",
+    "(updated_at 2026-09-21). Todos os enums (triggersOn, triggersWhen, conditionType, operator,",
+    "propertyName, actionType, severity, status) são os da página. Nenhum workspace, nenhum deploy.",
+    "O que faz: quando um incidente nasce das regras 1 ou 2 (persistência como SYSTEM) e o host",
+    "é um servidor (nome começa por 'srv'), sobe a severidade para High, marca, passa a Active e",
+    "acrescenta as três tarefas de triagem que o Ciclo 3 provou serem as que decidem o caso.",
+    "IDs das regras: os GUIDs dos YAML em ../rules/. Em produção seriam os IDs de recurso das",
+    "regras criadas no workspace — o ARM do template não os conhece antes da criação (Dia 1: o ID",
+    "só existe depois de criada)."
+  ],
+  "type": "Microsoft.SecurityInsights/automationRules",
+  "apiVersion": "2025-10-01-preview",
+  "name": "d9a4c2e7-3f18-4b6a-9e05-71c8f2a5d3b6",
+  "properties": {
+    "displayName": "Triage: SYSTEM persistence on servers -> High, tasks, Active",
+    "order": 1,
+    "triggeringLogic": {
+      "isEnabled": true,
+      "triggersOn": "Incidents",
+      "triggersWhen": "Created",
+      "conditions": [
+        {
+          "conditionType": "Property",
+          "conditionProperties": {
+            "propertyName": "IncidentRelatedAnalyticRuleIds",
+            "operator": "Contains",
+            "propertyValues": [
+              "3c9d7f2a-6b41-4e8f-9a05-2d7c1e4b8f63",
+              "7e2b9c41-5a8d-4f36-b1e7-9c04d3a6f258"
+            ]
+          }
+        },
+        {
+          "conditionType": "Property",
+          "conditionProperties": {
+            "propertyName": "HostName",
+            "operator": "StartsWith",
+            "propertyValues": [ "srv" ]
+          }
+        },
+        {
+          "conditionType": "Property",
+          "conditionProperties": {
+            "propertyName": "IncidentSeverity",
+            "operator": "NotEquals",
+            "propertyValues": [ "High" ]
+          }
+        }
+      ]
+    },
+    "actions": [
+      {
+        "order": 1,
+        "actionType": "ModifyProperties",
+        "actionConfiguration": {
+          "severity": "High",
+          "status": "Active",
+          "labels": [
+            { "labelName": "persistence-system" },
+            { "labelName": "server" },
+            { "labelName": "ciclo5-lab" }
+          ]
+        }
+      },
+      {
+        "order": 2,
+        "actionType": "AddIncidentTask",
+        "actionConfiguration": {
+          "title": "Confirm audit coverage before trusting silence",
+          "description": "Check whether 'Audit Other Object Access Events' is enabled on the host. If it is NOT, absence of a matching 4698 alert means nothing (rule 2 is deaf, not clean). If it IS and only the 4688 rule fired, the task may have been created but not registered - verify with schtasks /query on the host."
+        }
+      },
+      {
+        "order": 3,
+        "actionType": "AddIncidentTask",
+        "actionConfiguration": {
+          "title": "Pull the full TaskContent XML and read Principal/Triggers/Actions",
+          "description": "From SecurityEvent (EventID 4698, parse EventData) get TaskContent (~1.6 KB). Confirm <UserId>S-1-5-18</UserId>, the trigger (<Interval>, <BootTrigger>, <LogonTrigger>) and <Command>. RunLevel=LeastPrivilege does NOT mean low privilege when the principal is already SYSTEM (Ciclo 3.1)."
+        }
+      },
+      {
+        "order": 4,
+        "actionType": "AddIncidentTask",
+        "actionConfiguration": {
+          "title": "Check for 4702 updates and \\Microsoft\\ evasion",
+          "description": "Query EventID 4702 for the same TaskName in the last 24h (task edited after creation is out of rule 2 scope). List tasks registered under \\Microsoft\\ on this host created by non-Microsoft parents - the rules filter that path by design."
+        }
+      }
+    ]
+  }
+}

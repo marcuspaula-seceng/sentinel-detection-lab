@@ -1,0 +1,66 @@
+{
+  "_comment": "Ciclo 7 Dia 1. Incidente SINTETICO no formato SecurityIncident/SecurityAlert (colunas oficiais, 22/09/2026). Entities e ExtendedProperties sao STRINGS JSON, como na tabela. Telemetria: o 4698 REAL do sample CC0 (\\eviltask, srvdefender01) + um 4702 sintetico 20 min depois (tarefa editada) + uma tarefa sintetica debaixo de \\Microsoft\\ registada por humano (evasao).",
+  "incident": {
+    "IncidentNumber": 1,
+    "IncidentName": "6b1c2f3e-0000-4000-8000-000000000001",
+    "Title": "Scheduled Task Registered For SYSTEM With Persistent Trigger (Event 4698)",
+    "Severity": "High",
+    "Status": "Active",
+    "Labels": ["persistence-system", "server", "ciclo5-lab"],
+    "RelatedAnalyticRuleIds": ["3c9d7f2a-6b41-4e8f-9a05-2d7c1e4b8f63", "7e2b9c41-5a8d-4f36-b1e7-9c04d3a6f258"],
+    "AlertIds": ["a1", "a2"],
+    "Tasks": [],
+    "CreatedTime": "2021-04-21T13:36:00Z",
+    "ProviderName": "Azure Sentinel"
+  },
+  "alerts": [
+    {
+      "SystemAlertId": "a1",
+      "AlertName": "Scheduled Task Created To Run As SYSTEM With High-Frequency Trigger",
+      "AlertSeverity": "Medium",
+      "Tactics": "Persistence, PrivilegeEscalation",
+      "Techniques": "T1053.005",
+      "StartTime": "2021-04-21T13:30:00Z",
+      "Entities": "[{\"Type\": \"host\", \"HostName\": \"srvdefender01\", \"DnsDomain\": \"offsec.lan\"}, {\"Type\": \"account\", \"Name\": \"admmig\", \"NTDomain\": \"OFFSEC\"}, {\"Type\": \"process\", \"ProcessId\": \"0x15b4\", \"CommandLine\": \"\\\"C:\\\\Windows\\\\system32\\\\schtasks.exe\\\" /create /sc minute /mo 1 /tn eviltask /tr C:\\\\tools\\\\shell.cmd /ru SYSTEM\"}]",
+      "ExtendedProperties": "{\"Custom Details\": \"{\\\"TaskCommandLine\\\": [\\\"schtasks.exe /create /sc minute /mo 1 /tn eviltask /tr C:\\\\\\\\tools\\\\\\\\shell.cmd /ru SYSTEM\\\"], \\\"ParentProcess\\\": [\\\"powershell.exe\\\"], \\\"CreatedBy\\\": [\\\"admmig\\\"]}\"}"
+    },
+    {
+      "SystemAlertId": "a2",
+      "AlertName": "Scheduled Task Registered For SYSTEM With Persistent Trigger (Event 4698)",
+      "AlertSeverity": "Medium",
+      "Tactics": "Persistence, PrivilegeEscalation",
+      "Techniques": "T1053.005",
+      "StartTime": "2021-04-21T13:30:00Z",
+      "Entities": "[{\"Type\": \"host\", \"HostName\": \"srvdefender01\"}, {\"Type\": \"account\", \"Name\": \"admmig\", \"NTDomain\": \"OFFSEC\"}]",
+      "ExtendedProperties": "{\"Custom Details\": {\"TaskName\": \"\\\\eviltask\", \"RegisteredBy\": \"admmig\"}}"
+    }
+  ],
+  "tables": {
+    "SecurityEvent": [
+      {
+        "_origem": "4698 REAL do sample CC0 (campos extraidos com Get-WinEvent em 22/09; EventData reconstruido)",
+        "TimeGenerated": "2021-04-21T13:30:00.5894609Z", "EventID": 4698, "Computer": "srvdefender01.offsec.lan",
+        "SubjectUserName": "admmig", "SubjectDomainName": "OFFSEC",
+        "EventData": "<EventData><Data Name=\"SubjectUserSid\">S-1-5-21-4230534742-2542757381-3142984815-1111</Data><Data Name=\"SubjectUserName\">admmig</Data><Data Name=\"SubjectDomainName\">OFFSEC</Data><Data Name=\"SubjectLogonId\">0x6fc89e</Data><Data Name=\"TaskName\">\\eviltask</Data><Data Name=\"TaskContent\">&lt;?xml version=\"1.0\" encoding=\"UTF-16\"?&gt;&lt;Task version=\"1.2\"&gt;&lt;RegistrationInfo&gt;&lt;Author&gt;OFFSEC\\admmig&lt;/Author&gt;&lt;URI&gt;\\eviltask&lt;/URI&gt;&lt;/RegistrationInfo&gt;&lt;Triggers&gt;&lt;TimeTrigger&gt;&lt;Repetition&gt;&lt;Interval&gt;PT1M&lt;/Interval&gt;&lt;/Repetition&gt;&lt;/TimeTrigger&gt;&lt;/Triggers&gt;&lt;Actions&gt;&lt;Exec&gt;&lt;Command&gt;C:\\tools\\shell.cmd&lt;/Command&gt;&lt;/Exec&gt;&lt;/Actions&gt;&lt;Principals&gt;&lt;Principal id=\"Author\"&gt;&lt;UserId&gt;S-1-5-18&lt;/UserId&gt;&lt;RunLevel&gt;LeastPrivilege&lt;/RunLevel&gt;&lt;/Principal&gt;&lt;/Principals&gt;&lt;/Task&gt;</Data></EventData>"
+      },
+      {
+        "_origem": "4702 SINTETICO: a mesma tarefa editada 20 min depois — comando trocado, principal mantido",
+        "TimeGenerated": "2021-04-21T13:50:12Z", "EventID": 4702, "Computer": "srvdefender01.offsec.lan",
+        "SubjectUserName": "admmig", "SubjectDomainName": "OFFSEC",
+        "EventData": "<EventData><Data Name=\"SubjectUserName\">admmig</Data><Data Name=\"TaskName\">\\eviltask</Data><Data Name=\"TaskContent\">&lt;Task&gt;&lt;Triggers&gt;&lt;TimeTrigger&gt;&lt;Repetition&gt;&lt;Interval&gt;PT1M&lt;/Interval&gt;&lt;/Repetition&gt;&lt;/TimeTrigger&gt;&lt;/Triggers&gt;&lt;Actions&gt;&lt;Exec&gt;&lt;Command&gt;C:\\Windows\\Temp\\b.cmd&lt;/Command&gt;&lt;/Exec&gt;&lt;/Actions&gt;&lt;Principals&gt;&lt;Principal&gt;&lt;UserId&gt;S-1-5-18&lt;/UserId&gt;&lt;RunLevel&gt;LeastPrivilege&lt;/RunLevel&gt;&lt;/Principal&gt;&lt;/Principals&gt;&lt;/Task&gt;</Data></EventData>"
+      },
+      {
+        "_origem": "4698 SINTETICO: evasao — tarefa debaixo de \\Microsoft\\ registada por humano, SYSTEM + boot",
+        "TimeGenerated": "2021-04-21T13:52:40Z", "EventID": 4698, "Computer": "srvdefender01.offsec.lan",
+        "SubjectUserName": "admmig", "SubjectDomainName": "OFFSEC",
+        "EventData": "<EventData><Data Name=\"SubjectUserName\">admmig</Data><Data Name=\"TaskName\">\\Microsoft\\Windows\\Fake\\Updater</Data><Data Name=\"TaskContent\">&lt;Task&gt;&lt;Triggers&gt;&lt;BootTrigger&gt;&lt;Enabled&gt;true&lt;/Enabled&gt;&lt;/BootTrigger&gt;&lt;/Triggers&gt;&lt;Actions&gt;&lt;Exec&gt;&lt;Command&gt;C:\\Windows\\Temp\\a.cmd&lt;/Command&gt;&lt;/Exec&gt;&lt;/Actions&gt;&lt;Principals&gt;&lt;Principal&gt;&lt;UserId&gt;S-1-5-18&lt;/UserId&gt;&lt;RunLevel&gt;HighestAvailable&lt;/RunLevel&gt;&lt;/Principal&gt;&lt;/Principals&gt;&lt;/Task&gt;</Data></EventData>"
+      },
+      {
+        "_origem": "4698 SINTETICO: tarefa legitima do Windows, registada pela conta de maquina — NAO e evasao",
+        "TimeGenerated": "2021-04-21T13:00:00Z", "EventID": 4698, "Computer": "srvdefender01.offsec.lan",
+        "SubjectUserName": "SRVDEFENDER01$", "SubjectDomainName": "OFFSEC",
+        "EventData": "<EventData><Data Name=\"SubjectUserName\">SRVDEFENDER01$</Data><Data Name=\"TaskName\">\\Microsoft\\Windows\\WindowsUpdate\\Scheduled Start</Data><Data Name=\"TaskContent\">&lt;Task&gt;&lt;Principals&gt;&lt;Principal&gt;&lt;UserId&gt;S-1-5-18&lt;/UserId&gt;&lt;/Principal&gt;&lt;/Principals&gt;&lt;/Task&gt;</Data></EventData>"
+      }
+    ]
+  }
+}
