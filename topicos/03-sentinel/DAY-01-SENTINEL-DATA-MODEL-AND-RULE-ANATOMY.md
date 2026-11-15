@@ -250,7 +250,7 @@ template real do repositório `Azure/Azure-Sentinel`; medir `contains` vs `has` 
 MARCUS REFLECTION: PENDING
 ```
 
-Pergunta de entrevista que este dia prepara — **não** copiar para `ENTREVISTA.md` antes de
+Pergunta que este dia responde — **não** dar por aprendida antes de
 conseguir dizer em voz alta, sem ler:
 
 > *"Tem uma regra Sigma que funciona. O que muda quando a leva para o Sentinel?"*

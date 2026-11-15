@@ -134,6 +134,6 @@ automation rule modelada. Nada a executar; tudo a raciocinar com os limites do D
 MARCUS REFLECTION: PENDING
 ```
 
-Pergunta de entrevista deste dia — só para `ENTREVISTA.md` quando sair em voz alta, sem ler:
+Pergunta que este dia responde — só conta como aprendida quando sair em voz alta, sem ler:
 
 > *"A doc manda usar ASIM. Você não usou. Por quê, e o que perdeu?"*

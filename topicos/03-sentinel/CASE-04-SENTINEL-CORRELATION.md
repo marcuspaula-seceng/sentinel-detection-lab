@@ -225,6 +225,6 @@ se o incidente for um. Em três incidentes, cada analista vê uma táctica e nen
 MARCUS REFLECTION: PENDING
 ```
 
-Pergunta de entrevista deste caso — só para `ENTREVISTA.md` quando sair em voz alta, sem ler:
+Pergunta que este caso responde — só conta como aprendida quando sair em voz alta, sem ler:
 
 > *"Você tem detecção de identidade, de endpoint e de servidor. Um ator passa pelos três. Quantos incidentes o seu SIEM abre — e o que decide isso?"*

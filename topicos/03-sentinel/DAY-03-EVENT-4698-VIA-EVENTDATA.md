@@ -156,6 +156,6 @@ Decidir de novo se cresce ou se declara.
 MARCUS REFLECTION: PENDING
 ```
 
-Pergunta de entrevista deste dia — só para `ENTREVISTA.md` quando sair em voz alta, sem ler:
+Pergunta que este dia responde — só conta como aprendida quando sair em voz alta, sem ler:
 
 > *"A sua regra procura `<UserId>S-1-5-18</UserId>`. Por que é que ela não dispara em produção?"*

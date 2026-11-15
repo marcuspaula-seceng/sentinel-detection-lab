@@ -122,6 +122,6 @@ o Sentinel os juntar sozinho — e onde isso não chega e é preciso `join`?**
 MARCUS REFLECTION: PENDING
 ```
 
-Pergunta de entrevista deste dia — só para `ENTREVISTA.md` quando sair em voz alta, sem ler:
+Pergunta que este dia responde — só conta como aprendida quando sair em voz alta, sem ler:
 
 > *"Duas regras diferentes disparam para o mesmo ataque. Como é que o Sentinel sabe que é o mesmo incidente — e quando é que não sabe?"*

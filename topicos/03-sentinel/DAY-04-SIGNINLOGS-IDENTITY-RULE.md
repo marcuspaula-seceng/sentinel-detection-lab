@@ -153,6 +153,6 @@ entra como fonte, como a doc recomenda.
 MARCUS REFLECTION: PENDING
 ```
 
-Pergunta de entrevista deste dia — só para `ENTREVISTA.md` quando sair em voz alta, sem ler:
+Pergunta que este dia responde — só conta como aprendida quando sair em voz alta, sem ler:
 
 > *"A telemetria de dispositivo não veio. A sua regra dispara ou fica calada? Por quê?"*

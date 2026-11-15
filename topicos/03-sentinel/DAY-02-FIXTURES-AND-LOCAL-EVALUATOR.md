@@ -150,6 +150,6 @@ fixtures já trazem os campos extraídos e o parse fica declarado como não test
 MARCUS REFLECTION: PENDING
 ```
 
-Pergunta de entrevista deste dia — só para `ENTREVISTA.md` quando sair em voz alta, sem ler:
+Pergunta que este dia responde — só conta como aprendida quando sair em voz alta, sem ler:
 
 > *"A sua suíte de testes passa a 100%. Como sabe que ela testa alguma coisa?"*
